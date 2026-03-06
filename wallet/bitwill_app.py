@@ -441,9 +441,25 @@ class BitWillApp:
         return self.blockchain.ping()
 
     def switch_network(self, testnet: bool) -> None:
-        """Switch between testnet and mainnet."""
+        """Switch between testnet and mainnet.
+        Updates all components so addresses and keys use the correct network prefix.
+        Mainnet generates real Bitcoin addresses (starting with '1'),
+        testnet generates test addresses (starting with 'm' or 'n').
+        """
         self.testnet = testnet
         self.blockchain = BlockchainAPI(testnet=testnet)
+
+        # Update master wallet network - re-derive keys with correct prefix
+        self.master_wallet.switch_network(testnet)
+
+        # Update panic manager if present
+        if self.panic_manager:
+            self.panic_manager.testnet = testnet
+
+        # Update decoy wallet if in panic mode
+        if self._is_decoy_mode and self._decoy_wallet:
+            self._decoy_wallet.testnet = testnet
+            self._decoy_wallet._generate_decoy_data()
 
     # --- Panic Mode ---
 

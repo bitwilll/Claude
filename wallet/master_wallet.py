@@ -79,10 +79,22 @@ class MasterWallet:
         self._pre_signed_txs: List[Dict] = []
         self._created_at: float = 0
 
+    def switch_network(self, testnet: bool) -> None:
+        """Switch between testnet and mainnet.
+        Re-derives the master key so all addresses use the correct network prefix.
+        Mainnet: BIP-44 coin_type=0, address prefix 0x00 (starts with '1')
+        Testnet: BIP-44 coin_type=1, address prefix 0x6F (starts with 'm'/'n')
+        """
+        self.testnet = testnet
+        if self._master_key:
+            self._master_key.testnet = testnet
+
     @property
     def address(self) -> Optional[str]:
         if self._master_key:
-            # Use first receiving address (m/44'/0'/0'/0/0)
+            # Use first receiving address
+            # Mainnet: m/44'/0'/0'/0/0 -> address starts with '1'
+            # Testnet: m/44'/1'/0'/0/0 -> address starts with 'm' or 'n'
             key = derive_path(self._master_key, bip44_path(
                 account=0, change=0, address_index=0, testnet=self.testnet
             ))

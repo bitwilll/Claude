@@ -200,6 +200,44 @@ class BitWillCLI:
             # Decoy mode - show wallet as normal (no indication of panic)
             print(c("  Wallet unlocked.", Colors.GREEN))
 
+    def _print_qr(self, data: str, label: str = "") -> None:
+        """Print a QR code in the terminal using Unicode block characters."""
+        try:
+            import qrcode
+            qr = qrcode.QRCode(
+                version=1,
+                error_correction=qrcode.constants.ERROR_CORRECT_L,
+                box_size=1,
+                border=2,
+            )
+            qr.add_data(data)
+            qr.make(fit=True)
+            matrix = qr.get_matrix()
+
+            if label:
+                print(c(f"\n  {label}", Colors.BOLD))
+
+            # Print QR using unicode half-blocks for compact display
+            # Each pair of rows becomes one line using upper/lower half blocks
+            rows = len(matrix)
+            for r in range(0, rows, 2):
+                line = "  "
+                for col in range(len(matrix[0])):
+                    top = matrix[r][col]
+                    bottom = matrix[r + 1][col] if r + 1 < rows else False
+                    if top and bottom:
+                        line += "\u2588"      # Full block (both dark)
+                    elif top and not bottom:
+                        line += "\u2580"      # Upper half block
+                    elif not top and bottom:
+                        line += "\u2584"      # Lower half block
+                    else:
+                        line += " "           # Both light
+                print(line)
+            print()
+        except ImportError:
+            print(c("  (qrcode package not installed - run: pip install qrcode)", Colors.DIM))
+
     def _main_menu(self) -> None:
         while self.running:
             print(c("\n  === BITWILL Main Menu ===\n", Colors.BOLD))
@@ -220,6 +258,7 @@ class BitWillCLI:
             print("  11. Transaction History")
             print("  12. Ping Network")
             print("  13. Switch Network (Testnet/Mainnet)")
+            print("  14. Show QR Code")
             print("  0.  Exit\n")
 
             choice = input(c("  Select option: ", Colors.CYAN)).strip()
@@ -238,6 +277,7 @@ class BitWillCLI:
                 '11': self._show_tx_history,
                 '12': self._ping_network,
                 '13': self._switch_network,
+                '14': self._show_qr_code,
                 '0': self._exit,
             }
 
@@ -271,6 +311,7 @@ class BitWillCLI:
     def _generate_address(self) -> None:
         addr = self.app.get_new_address()
         print(c(f"\n  New Address: {addr}", Colors.GREEN))
+        self._print_qr(f"bitcoin:{addr}", f"QR Code for {addr}")
 
     def _create_child_wallet(self) -> None:
         print(c("\n  === Create Child Wallet ===\n", Colors.BOLD))
@@ -500,6 +541,45 @@ class BitWillCLI:
             print(c(f"\n  Switched to {target.upper()}", Colors.GREEN))
         else:
             print(c("  Cancelled.", Colors.DIM))
+
+    def _show_qr_code(self) -> None:
+        """Show QR code for a wallet address."""
+        print(c("\n  === QR Code Generator ===\n", Colors.BOLD))
+        print(f"  1. Master wallet address")
+        print(f"  2. Child wallet address")
+        print(f"  3. Custom address or text\n")
+
+        choice = input(c("  Select option [1]: ", Colors.CYAN)).strip() or '1'
+
+        if choice == '1':
+            addr = self.app.get_address()
+            print(f"\n  Address: {c(addr, Colors.CYAN)}")
+            self._print_qr(f"bitcoin:{addr}", "Scan to send BTC to this address")
+        elif choice == '2':
+            children = self.app.list_child_wallets()
+            if not children:
+                print(c("  No child wallets found.", Colors.DIM))
+                return
+            print()
+            for i, cw in enumerate(children, 1):
+                print(f"  {i}. {c(cw['name'], Colors.BOLD)} - {c(cw['address'], Colors.CYAN)}")
+            print()
+            idx = input(c("  Select child wallet: ", Colors.CYAN)).strip()
+            try:
+                cw = children[int(idx) - 1]
+                print(f"\n  Child: {c(cw['name'], Colors.BOLD)}")
+                print(f"  Address: {c(cw['address'], Colors.CYAN)}")
+                self._print_qr(f"bitcoin:{cw['address']}", f"QR Code for {cw['name']}")
+            except (ValueError, IndexError):
+                print(c("  Invalid selection.", Colors.RED))
+        elif choice == '3':
+            text = input(c("  Enter address or text: ", Colors.CYAN)).strip()
+            if text:
+                self._print_qr(text, "QR Code")
+            else:
+                print(c("  Nothing to encode.", Colors.RED))
+        else:
+            print(c("  Invalid option.", Colors.RED))
 
     def _exit(self) -> None:
         print(c("\n  Goodbye! Your wallet data is safely encrypted.\n",

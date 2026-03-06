@@ -4,13 +4,15 @@ Flask-based API for wallet operations, inheritance management,
 and blockchain network integration.
 """
 
+import io
 import os
+import base64
 import secrets
 import time
 from functools import wraps
 from typing import Optional
 
-from flask import Flask, request, jsonify, render_template, session
+from flask import Flask, request, jsonify, render_template, session, send_file
 
 from ..wallet.bitwill_app import BitWillApp
 from ..core.transaction import satoshis_to_btc
@@ -355,6 +357,45 @@ def create_app(storage_dir: Optional[str] = None,
             return jsonify(bw.get_network_tx_history(address))
         except ConnectionError as e:
             return jsonify({"error": str(e)}), 503
+
+    # --- QR Code ---
+
+    @app.route("/api/qrcode", methods=["GET"])
+    @require_wallet
+    def generate_qr(bw: BitWillApp):
+        """Generate QR code for an address. Returns PNG image or base64 data."""
+        address = request.args.get("address") or bw.get_address()
+        data = request.args.get("data") or f"bitcoin:{address}"
+        fmt = request.args.get("format", "base64")  # "base64" or "png"
+
+        try:
+            import qrcode
+            qr = qrcode.QRCode(
+                version=1,
+                error_correction=qrcode.constants.ERROR_CORRECT_L,
+                box_size=10,
+                border=4,
+            )
+            qr.add_data(data)
+            qr.make(fit=True)
+            img = qr.make_image(fill_color="black", back_color="white")
+
+            buf = io.BytesIO()
+            img.save(buf, format="PNG")
+            buf.seek(0)
+
+            if fmt == "png":
+                return send_file(buf, mimetype="image/png",
+                                 download_name="qrcode.png")
+            else:
+                b64 = base64.b64encode(buf.getvalue()).decode("ascii")
+                return jsonify({
+                    "qr_base64": b64,
+                    "address": address,
+                    "data": data,
+                })
+        except ImportError:
+            return jsonify({"error": "qrcode package not installed"}), 500
 
     # --- Testing helpers ---
 

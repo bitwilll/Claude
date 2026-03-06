@@ -229,6 +229,31 @@ tr:hover td { background: var(--surface2); }
   .mnemonic-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
+/* QR Code Modal */
+.qr-modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 1000;
+  display: none; align-items: center; justify-content: center;
+}
+.qr-modal-overlay.active { display: flex; }
+.qr-modal {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  padding: 28px; text-align: center; max-width: 400px; width: 90%;
+}
+.qr-modal .qr-title { font-size: 16px; font-weight: 700; color: var(--accent); margin-bottom: 16px; }
+.qr-modal .qr-image { background: #fff; border-radius: 8px; padding: 16px; display: inline-block; margin-bottom: 16px; }
+.qr-modal .qr-image img { display: block; width: 200px; height: 200px; image-rendering: pixelated; }
+.qr-modal .qr-address {
+  font-size: 12px; color: var(--text-dim); word-break: break-all; margin-bottom: 16px;
+  padding: 10px; background: var(--bg); border-radius: 6px; border: 1px solid var(--border);
+}
+.qr-modal .qr-actions { display: flex; gap: 10px; justify-content: center; }
+.qr-btn {
+  background: transparent; border: 1px solid var(--border); color: var(--accent);
+  padding: 6px 14px; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 12px;
+}
+.qr-btn:hover { background: var(--accent); color: var(--bg); }
+.qr-btn-close { background: var(--surface2); border-color: var(--border); color: var(--text); }
+
 .warning-box {
   padding: 12px 16px; border-radius: 8px; font-size: 13px;
   background: #3a2a1a; border: 1px solid var(--yellow); color: var(--yellow);
@@ -385,7 +410,7 @@ tr:hover td { background: var(--surface2); }
         </div>
       </div>
       <div class="card">
-        <div class="card-header">Primary Address</div>
+        <div class="card-header">Primary Address <button class="btn btn-sm btn-secondary" onclick="showQR()">QR Code</button></div>
         <div class="stat-value addr" id="dash-address">--</div>
       </div>
       <div class="card">
@@ -410,7 +435,7 @@ tr:hover td { background: var(--surface2); }
         <div class="card-header">Child Wallets <span class="badge" id="children-count">0</span></div>
         <div id="children-table">
           <table>
-            <thead><tr><th>Name</th><th>Address</th><th>Allocated</th><th>Nominee</th><th>Path</th></tr></thead>
+            <thead><tr><th>Name</th><th>Address</th><th>Allocated</th><th>Nominee</th><th>Path</th><th>QR</th></tr></thead>
             <tbody id="children-tbody"></tbody>
           </table>
         </div>
@@ -433,6 +458,16 @@ tr:hover td { background: var(--surface2); }
         <div class="card-header">Generate Address</div>
         <button class="btn btn-primary" onclick="generateAddress()">Generate New Address</button>
         <div id="new-addr-result" style="margin-top:12px;"></div>
+      </div>
+      <div class="card">
+        <div class="card-header">QR Code</div>
+        <p style="color:var(--text-dim); margin-bottom:12px; font-size:13px;">Generate a QR code for your wallet address to receive Bitcoin easily.</p>
+        <button class="btn btn-primary" onclick="showQR()">Show Master Address QR</button>
+        <div class="form-group" style="margin-top:14px;">
+          <label>Custom Address</label>
+          <input id="qr-custom-addr" placeholder="Enter any Bitcoin address">
+        </div>
+        <button class="btn btn-secondary" onclick="showQR(document.getElementById('qr-custom-addr').value)">Show Custom QR</button>
       </div>
     </div>
 
@@ -560,6 +595,20 @@ tr:hover td { background: var(--surface2); }
       </div>
     </div>
 
+  </div>
+</div>
+
+<!-- QR Code Modal -->
+<div id="qr-modal" class="qr-modal-overlay" onclick="if(event.target===this)closeQR()">
+  <div class="qr-modal">
+    <div class="qr-title">Bitcoin QR Code</div>
+    <div class="qr-image"><img id="qr-img" src="" alt="QR Code"></div>
+    <div class="qr-address" id="qr-addr-display">--</div>
+    <div class="qr-actions">
+      <button class="qr-btn" onclick="copyQRAddress()">Copy Address</button>
+      <button class="qr-btn" onclick="downloadQR()">Download PNG</button>
+      <button class="qr-btn qr-btn-close" onclick="closeQR()">Close</button>
+    </div>
   </div>
 </div>
 
@@ -710,6 +759,7 @@ async function loadChildren() {
       <td class="amount-in">${(c.allocated_btc || 0).toFixed(8)}</td>
       <td>${c.nominee ? esc(c.nominee) : '<span style="color:var(--text-dim)">--</span>'}</td>
       <td style="color:var(--text-dim);font-size:11px">${esc(c.derivation_path)}</td>
+      <td><button class="qr-btn" onclick="showQR('${esc(c.address)}')">QR</button></td>
     </tr>`).join('');
   } catch (e) { toast(e.message, 'error'); }
 }
@@ -744,9 +794,52 @@ async function distributeBtc() {
 async function generateAddress() {
   try {
     const d = await api('/api/address/new', { method: 'POST' });
-    document.getElementById('new-addr-result').innerHTML = `<div class="stat-value addr">${esc(d.address)}</div>`;
+    document.getElementById('new-addr-result').innerHTML = `<div class="stat-value addr">${esc(d.address)}</div><button class="btn btn-sm btn-secondary" style="margin-top:8px" onclick="showQR('${esc(d.address)}')">Show QR</button>`;
     toast('New address generated', 'success');
   } catch (e) { toast(e.message, 'error'); }
+}
+
+/* --- QR Code --- */
+let currentQRAddress = '';
+
+async function showQR(address) {
+  const addr = address || document.getElementById('dash-address').textContent;
+  if (!addr || addr === '--') return toast('No address available', 'error');
+  currentQRAddress = addr;
+  try {
+    const d = await api(`/api/qrcode?address=${encodeURIComponent(addr)}`);
+    document.getElementById('qr-img').src = 'data:image/png;base64,' + d.qr_base64;
+    document.getElementById('qr-addr-display').textContent = d.address;
+    document.getElementById('qr-modal').classList.add('active');
+  } catch (e) { toast('Failed to generate QR: ' + e.message, 'error'); }
+}
+
+function closeQR() {
+  document.getElementById('qr-modal').classList.remove('active');
+}
+
+function copyQRAddress() {
+  navigator.clipboard.writeText(currentQRAddress).then(() => {
+    toast('Address copied to clipboard', 'success');
+  }).catch(() => {
+    // Fallback for non-HTTPS
+    const ta = document.createElement('textarea');
+    ta.value = currentQRAddress;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    toast('Address copied', 'success');
+  });
+}
+
+function downloadQR() {
+  const img = document.getElementById('qr-img');
+  const a = document.createElement('a');
+  a.href = img.src;
+  a.download = `bitwill-qr-${currentQRAddress.slice(0,12)}.png`;
+  a.click();
+  toast('QR code downloaded', 'success');
 }
 
 /* --- Nominees --- */

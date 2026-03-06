@@ -178,6 +178,49 @@ tr:hover td { background: var(--surface2); }
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
+/* Network selector */
+.net-selector {
+  display: flex; gap: 0; margin-bottom: 20px; border: 1px solid var(--border);
+  border-radius: 6px; overflow: hidden;
+}
+.net-option {
+  flex: 1; padding: 10px; text-align: center; font-size: 13px; font-weight: 600;
+  cursor: pointer; background: var(--bg); color: var(--text-dim); transition: all 0.15s;
+  border: none; font-family: inherit;
+}
+.net-option:hover { background: var(--surface2); }
+.net-option.active-testnet { background: #1a3a2a; color: var(--green); }
+.net-option.active-mainnet { background: #3a1a1a; color: var(--orange); }
+.net-option .net-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 6px; }
+.net-option .net-dot.green { background: var(--green); }
+.net-option .net-dot.orange { background: var(--orange); }
+.ping-btn-inline {
+  flex: 0 0 auto; padding: 10px 14px; text-align: center; font-size: 12px;
+  cursor: pointer; background: var(--surface2); color: var(--accent); transition: all 0.15s;
+  border: none; font-family: inherit; border-left: 1px solid var(--border);
+}
+.ping-btn-inline:hover { background: var(--accent); color: var(--bg); }
+
+/* Ping results */
+.ping-results {
+  margin-bottom: 16px; padding: 14px; background: var(--bg);
+  border: 1px solid var(--border); border-radius: 6px; font-size: 12px;
+}
+.ping-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+.ping-row + .ping-row { border-top: 1px solid var(--border); }
+.ping-label { font-weight: 600; min-width: 70px; }
+.ping-url { color: var(--text-dim); flex: 1; word-break: break-all; }
+.ping-latency { font-weight: 600; }
+.ping-latency.fast { color: var(--green); }
+.ping-latency.medium { color: var(--yellow); }
+.ping-latency.slow { color: var(--orange); }
+.ping-latency.fail { color: var(--red); }
+.mainnet-warning {
+  padding: 10px 14px; border-radius: 6px; font-size: 12px;
+  background: #3a1a1a; border: 1px solid var(--red); color: var(--red);
+  margin-bottom: 14px; display: none;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .sidebar { display: none; }
@@ -202,6 +245,25 @@ tr:hover td { background: var(--surface2); }
   <div class="login-box">
     <div class="login-logo">BITWILL</div>
     <div class="login-sub">Blockchain Inheritance &amp; Will Security System</div>
+
+    <!-- Network Selector -->
+    <div style="margin-bottom:16px">
+      <label style="display:block;font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Network</label>
+      <div class="net-selector">
+        <button class="net-option active-testnet" id="login-net-testnet" onclick="selectLoginNetwork('testnet')">
+          <span class="net-dot green"></span>Testnet
+        </button>
+        <button class="net-option" id="login-net-mainnet" onclick="selectLoginNetwork('mainnet')">
+          <span class="net-dot orange"></span>Mainnet
+        </button>
+        <button class="ping-btn-inline" onclick="pingFromLogin()" title="Test server connectivity">&#9889; Ping</button>
+      </div>
+      <div id="login-mainnet-warning" class="mainnet-warning">
+        &#9888; Mainnet uses real Bitcoin. Transactions are irreversible. Use with caution.
+      </div>
+      <div id="login-ping-results"></div>
+    </div>
+
     <div class="login-tabs">
       <button class="login-tab active" onclick="switchLoginTab('unlock')">Unlock</button>
       <button class="login-tab" onclick="switchLoginTab('create')">Create</button>
@@ -289,7 +351,7 @@ tr:hover td { background: var(--surface2); }
       <div class="nav-item" onclick="showPage('history')"><span class="icon">&#9776;</span> TX History</div>
     </div>
     <div class="sidebar-footer">
-      <span id="net-indicator" class="net-badge testnet">TESTNET</span>
+      <span id="net-indicator" class="net-badge testnet" style="cursor:pointer" onclick="showPage('network');document.querySelectorAll('.nav-item')[6].click();" title="Click to manage network">TESTNET</span>
       <span id="conn-status" style="margin-left:8px"><span class="status-dot offline"></span>Offline</span>
       <div style="margin-top:8px">
         <button class="btn btn-sm btn-secondary" onclick="lockWallet()">Lock</button>
@@ -430,6 +492,29 @@ tr:hover td { background: var(--surface2); }
           <div class="stat-value" id="net-name">--</div>
         </div>
       </div>
+
+      <!-- Network Switch -->
+      <div class="card">
+        <div class="card-header">Switch Network</div>
+        <div class="net-selector" style="max-width:400px">
+          <button class="net-option" id="app-net-testnet" onclick="switchAppNetwork('testnet')">
+            <span class="net-dot green"></span>Testnet
+          </button>
+          <button class="net-option" id="app-net-mainnet" onclick="switchAppNetwork('mainnet')">
+            <span class="net-dot orange"></span>Mainnet
+          </button>
+        </div>
+        <div id="app-mainnet-warning" class="mainnet-warning">
+          &#9888; Mainnet uses real Bitcoin! Transactions are irreversible.
+        </div>
+      </div>
+
+      <!-- Ping -->
+      <div class="card">
+        <div class="card-header">Ping Servers <button class="btn btn-sm btn-secondary" onclick="pingCurrentNetwork()">Ping Current</button> <button class="btn btn-sm btn-secondary" onclick="pingAllNetworks()">Ping All</button></div>
+        <div id="app-ping-results" style="color:var(--text-dim)">Click a ping button to test connectivity and latency.</div>
+      </div>
+
       <div class="btn-group">
         <button class="btn btn-primary" onclick="checkNetwork()">Check Connectivity</button>
         <button class="btn btn-secondary" onclick="syncUtxos()">Sync UTXOs from Network</button>
@@ -513,8 +598,12 @@ function switchLoginTab(tab) {
 async function unlockWallet() {
   const pw = document.getElementById('unlock-password').value;
   try {
-    const d = await api('/api/unlock', { method: 'POST', body: JSON.stringify({ password: pw }) });
+    const d = await api('/api/unlock', { method: 'POST', body: JSON.stringify({ password: pw, network: selectedLoginNetwork }) });
     if (d.panic_events > 0) toast(`Warning: ${d.panic_events} unauthorized access attempt(s) detected!`, 'error');
+    // Switch to selected network after unlock
+    if (selectedLoginNetwork === 'mainnet') {
+      await api('/api/network/switch', { method: 'POST', body: JSON.stringify({ network: 'mainnet' }) });
+    }
     enterApp(d);
   } catch (e) { toast(e.message, 'error'); }
 }
@@ -528,6 +617,9 @@ async function createWallet() {
   try {
     const d = await api('/api/create', { method: 'POST', body: JSON.stringify({ password: pw, passphrase: pp }) });
     showMnemonic(d.mnemonic);
+    if (selectedLoginNetwork === 'mainnet') {
+      await api('/api/network/switch', { method: 'POST', body: JSON.stringify({ network: 'mainnet' }) });
+    }
     enterApp(d);
   } catch (e) { toast(e.message, 'error'); }
 }
@@ -539,6 +631,9 @@ async function restoreWallet() {
   try {
     const d = await api('/api/restore', { method: 'POST', body: JSON.stringify({ mnemonic: mn, password: pw, passphrase: pp }) });
     toast('Wallet restored!', 'success');
+    if (selectedLoginNetwork === 'mainnet') {
+      await api('/api/network/switch', { method: 'POST', body: JSON.stringify({ network: 'mainnet' }) });
+    }
     enterApp(d);
   } catch (e) { toast(e.message, 'error'); }
 }
@@ -566,6 +661,7 @@ function enterApp(data) {
   document.getElementById('app-screen').style.display = 'flex';
   if (data.address) document.getElementById('dash-address').textContent = data.address;
   if (data.balance_btc !== undefined) document.getElementById('dash-balance').textContent = data.balance_btc.toFixed(8) + ' BTC';
+  updateNetworkUI(selectedLoginNetwork);
   refreshDashboard();
 }
 
@@ -806,6 +902,93 @@ async function loadHistory() {
   } catch (e) { document.getElementById('history-list').innerHTML = `<span style="color:var(--red)">${esc(e.message)}</span>`; }
 }
 
+/* --- Network Selection --- */
+let selectedLoginNetwork = 'testnet';
+
+function selectLoginNetwork(net) {
+  selectedLoginNetwork = net;
+  document.getElementById('login-net-testnet').className = 'net-option' + (net === 'testnet' ? ' active-testnet' : '');
+  document.getElementById('login-net-mainnet').className = 'net-option' + (net === 'mainnet' ? ' active-mainnet' : '');
+  document.getElementById('login-mainnet-warning').style.display = net === 'mainnet' ? 'block' : 'none';
+}
+
+function renderPingResults(data, container) {
+  let html = '';
+  const nets = data.testnet ? data : { [data.network]: data };
+  for (const [label, result] of Object.entries(nets)) {
+    const netColor = label === 'testnet' ? 'var(--green)' : 'var(--orange)';
+    html += `<div class="ping-results"><div style="font-weight:700;margin-bottom:8px;color:${netColor}">${label.toUpperCase()}</div>`;
+    for (const ep of result.endpoints) {
+      html += `<div class="ping-row">`;
+      html += `<span class="ping-label">${esc(ep.label)}</span>`;
+      html += `<span class="ping-url">${esc(ep.url)}</span>`;
+      if (ep.reachable) {
+        const cls = ep.latency_ms < 300 ? 'fast' : ep.latency_ms < 1000 ? 'medium' : 'slow';
+        html += `<span class="ping-latency ${cls}">${ep.latency_ms}ms</span>`;
+        html += `<span style="color:var(--text-dim);font-size:11px;min-width:100px">Block ${ep.block_height}</span>`;
+      } else {
+        html += `<span class="ping-latency fail">FAILED</span>`;
+      }
+      html += `</div>`;
+    }
+    html += `</div>`;
+  }
+  document.getElementById(container).innerHTML = html;
+}
+
+async function pingFromLogin() {
+  document.getElementById('login-ping-results').innerHTML = '<div style="padding:10px;color:var(--text-dim)"><span class="spinner"></span> Pinging servers...</div>';
+  try {
+    const d = await api('/api/network/ping-all');
+    renderPingResults(d, 'login-ping-results');
+  } catch (e) {
+    document.getElementById('login-ping-results').innerHTML = `<span style="color:var(--red)">Ping failed: ${esc(e.message)}</span>`;
+  }
+}
+
+async function pingCurrentNetwork() {
+  document.getElementById('app-ping-results').innerHTML = '<span class="spinner"></span> Pinging...';
+  try {
+    const d = await api('/api/network/ping');
+    renderPingResults({ [d.network]: d }, 'app-ping-results');
+  } catch (e) {
+    document.getElementById('app-ping-results').innerHTML = `<span style="color:var(--red)">${esc(e.message)}</span>`;
+  }
+}
+
+async function pingAllNetworks() {
+  document.getElementById('app-ping-results').innerHTML = '<span class="spinner"></span> Pinging all networks...';
+  try {
+    const d = await api('/api/network/ping-all');
+    renderPingResults(d, 'app-ping-results');
+  } catch (e) {
+    document.getElementById('app-ping-results').innerHTML = `<span style="color:var(--red)">${esc(e.message)}</span>`;
+  }
+}
+
+function updateNetworkUI(network) {
+  const badge = document.getElementById('net-indicator');
+  badge.textContent = network.toUpperCase();
+  badge.className = `net-badge ${network}`;
+  document.getElementById('net-name').textContent = network.toUpperCase();
+  // Update app page selectors
+  document.getElementById('app-net-testnet').className = 'net-option' + (network === 'testnet' ? ' active-testnet' : '');
+  document.getElementById('app-net-mainnet').className = 'net-option' + (network === 'mainnet' ? ' active-mainnet' : '');
+  document.getElementById('app-mainnet-warning').style.display = network === 'mainnet' ? 'block' : 'none';
+}
+
+async function switchAppNetwork(network) {
+  if (network === 'mainnet') {
+    if (!confirm('Switch to MAINNET? This uses real Bitcoin. Transactions are irreversible.')) return;
+  }
+  try {
+    await api('/api/network/switch', { method: 'POST', body: JSON.stringify({ network }) });
+    updateNetworkUI(network);
+    toast(`Switched to ${network.toUpperCase()}`, 'success');
+    checkNetwork();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
 /* --- Navigation --- */
 function showPage(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -827,10 +1010,17 @@ function esc(s) { const d = document.createElement('div'); d.textContent = s || 
 (async function init() {
   try {
     const s = await api('/api/status');
+    // Sync network state
+    selectedLoginNetwork = s.network || 'testnet';
+    selectLoginNetwork(selectedLoginNetwork);
     const badge = document.getElementById('net-indicator');
     badge.textContent = s.network.toUpperCase();
     badge.className = `net-badge ${s.network}`;
-    if (s.unlocked) { enterApp({}); refreshDashboard(); }
+    if (s.unlocked) {
+      updateNetworkUI(s.network);
+      enterApp({});
+      refreshDashboard();
+    }
     else if (!s.wallet_exists) switchLoginTab('create');
   } catch (e) {}
 })();

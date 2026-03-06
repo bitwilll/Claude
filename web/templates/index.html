@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BITWILL - Blockchain Inheritance &amp; Will Security</title>
+<style>
+:root {
+  --bg: #0a0e17;
+  --surface: #131a2b;
+  --surface2: #1a2340;
+  --border: #2a3556;
+  --text: #e0e6f0;
+  --text-dim: #7a8bb5;
+  --accent: #00d4ff;
+  --accent2: #6c5ce7;
+  --green: #00e676;
+  --yellow: #ffd740;
+  --red: #ff5252;
+  --orange: #ff9100;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+a { color: var(--accent); text-decoration: none; }
+
+/* Layout */
+.app { display: flex; min-height: 100vh; }
+.sidebar {
+  width: 240px; background: var(--surface); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; flex-shrink: 0;
+}
+.main { flex: 1; padding: 24px 32px; overflow-y: auto; }
+
+/* Sidebar */
+.logo {
+  padding: 20px 16px; border-bottom: 1px solid var(--border);
+  font-size: 18px; font-weight: 700; color: var(--accent);
+  letter-spacing: 2px;
+}
+.logo span { color: var(--text-dim); font-size: 11px; display: block; font-weight: 400; letter-spacing: 0; margin-top: 2px; }
+.nav { flex: 1; padding: 8px 0; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px; cursor: pointer; color: var(--text-dim);
+  transition: all 0.15s; font-size: 13px; border-left: 3px solid transparent;
+}
+.nav-item:hover { background: var(--surface2); color: var(--text); }
+.nav-item.active { color: var(--accent); border-left-color: var(--accent); background: var(--surface2); }
+.nav-item .icon { width: 18px; text-align: center; }
+.nav-divider { height: 1px; background: var(--border); margin: 8px 16px; }
+.nav-section { padding: 8px 16px 4px; font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-dim); }
+.sidebar-footer { padding: 12px 16px; border-top: 1px solid var(--border); font-size: 11px; color: var(--text-dim); }
+.net-badge {
+  display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px;
+  font-weight: 600; text-transform: uppercase; letter-spacing: 1px;
+}
+.net-badge.testnet { background: #1a3a2a; color: var(--green); }
+.net-badge.mainnet { background: #3a2a1a; color: var(--orange); }
+
+/* Cards */
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 20px; margin-bottom: 16px;
+}
+.card-header { font-size: 14px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; }
+.card-header .badge { font-size: 11px; padding: 2px 10px; border-radius: 12px; background: var(--surface2); color: var(--text-dim); }
+
+/* Stats row */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.stat-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 16px;
+}
+.stat-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+.stat-value { font-size: 22px; font-weight: 700; }
+.stat-value.btc { color: var(--green); }
+.stat-value.addr { font-size: 13px; color: var(--accent); word-break: break-all; }
+
+/* Forms */
+.form-group { margin-bottom: 14px; }
+.form-group label { display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 4px; }
+.form-group input, .form-group select {
+  width: 100%; padding: 10px 12px; background: var(--bg); border: 1px solid var(--border);
+  border-radius: 6px; color: var(--text); font-family: inherit; font-size: 13px;
+  outline: none; transition: border-color 0.15s;
+}
+.form-group input:focus { border-color: var(--accent); }
+.form-group input::placeholder { color: var(--text-dim); }
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 9px 18px; border: none; border-radius: 6px;
+  font-family: inherit; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all 0.15s;
+}
+.btn-primary { background: var(--accent); color: var(--bg); }
+.btn-primary:hover { filter: brightness(1.15); }
+.btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:hover { border-color: var(--accent); }
+.btn-danger { background: var(--red); color: #fff; }
+.btn-danger:hover { filter: brightness(1.15); }
+.btn-success { background: var(--green); color: var(--bg); }
+.btn-sm { padding: 6px 12px; font-size: 12px; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-group { display: flex; gap: 8px; margin-top: 12px; }
+
+/* Tables */
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; padding: 8px 12px; color: var(--text-dim); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--border); }
+td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+tr:hover td { background: var(--surface2); }
+
+/* Page sections */
+.page { display: none; }
+.page.active { display: block; }
+.page-title { font-size: 20px; font-weight: 700; margin-bottom: 20px; }
+
+/* Toast notifications */
+.toast-container { position: fixed; top: 16px; right: 16px; z-index: 1000; }
+.toast {
+  padding: 12px 20px; border-radius: 8px; margin-bottom: 8px;
+  font-size: 13px; animation: slideIn 0.3s ease;
+  max-width: 400px;
+}
+.toast.success { background: #1a3a2a; border: 1px solid var(--green); color: var(--green); }
+.toast.error { background: #3a1a1a; border: 1px solid var(--red); color: var(--red); }
+.toast.info { background: #1a2a3a; border: 1px solid var(--accent); color: var(--accent); }
+@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+/* Mnemonic display */
+.mnemonic-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+  padding: 16px; background: var(--bg); border-radius: 8px; border: 1px solid var(--yellow);
+}
+.mnemonic-word {
+  padding: 6px 10px; font-size: 13px; border-radius: 4px;
+  background: var(--surface2); color: var(--yellow);
+}
+.mnemonic-word .num { color: var(--text-dim); margin-right: 6px; font-size: 11px; }
+
+/* Login screen */
+.login-container {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 100vh; background: var(--bg);
+}
+.login-box {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 40px; width: 440px; max-width: 90vw;
+}
+.login-logo { font-size: 28px; font-weight: 700; color: var(--accent); letter-spacing: 3px; text-align: center; margin-bottom: 4px; }
+.login-sub { text-align: center; color: var(--text-dim); font-size: 12px; margin-bottom: 28px; }
+.login-tabs { display: flex; gap: 0; margin-bottom: 20px; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+.login-tab {
+  flex: 1; padding: 8px; text-align: center; font-size: 12px; font-weight: 600;
+  cursor: pointer; background: var(--bg); color: var(--text-dim); transition: all 0.15s;
+  border: none; font-family: inherit;
+}
+.login-tab.active { background: var(--accent); color: var(--bg); }
+
+/* Status indicator */
+.status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+.status-dot.online { background: var(--green); }
+.status-dot.offline { background: var(--red); }
+
+/* TX display */
+.tx-hash { font-size: 12px; color: var(--accent); word-break: break-all; }
+.amount-in { color: var(--green); }
+.amount-out { color: var(--red); }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .sidebar { display: none; }
+  .main { padding: 16px; }
+  .stats { grid-template-columns: 1fr; }
+  .mnemonic-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+.warning-box {
+  padding: 12px 16px; border-radius: 8px; font-size: 13px;
+  background: #3a2a1a; border: 1px solid var(--yellow); color: var(--yellow);
+  margin-bottom: 16px;
+}
+.spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.6s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- Login / Setup Screen -->
+<div id="login-screen" class="login-container">
+  <div class="login-box">
+    <div class="login-logo">BITWILL</div>
+    <div class="login-sub">Blockchain Inheritance &amp; Will Security System</div>
+    <div class="login-tabs">
+      <button class="login-tab active" onclick="switchLoginTab('unlock')">Unlock</button>
+      <button class="login-tab" onclick="switchLoginTab('create')">Create</button>
+      <button class="login-tab" onclick="switchLoginTab('restore')">Restore</button>
+    </div>
+
+    <!-- Unlock -->
+    <div id="tab-unlock" class="login-tab-content">
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="unlock-password" placeholder="Enter your wallet password" onkeydown="if(event.key==='Enter')unlockWallet()">
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="unlockWallet()">Unlock Wallet</button>
+    </div>
+
+    <!-- Create -->
+    <div id="tab-create" class="login-tab-content" style="display:none">
+      <div class="form-group">
+        <label>Password (min 8 chars)</label>
+        <input type="password" id="create-password" placeholder="Choose a strong password">
+      </div>
+      <div class="form-group">
+        <label>Confirm Password</label>
+        <input type="password" id="create-confirm" placeholder="Confirm password">
+      </div>
+      <div class="form-group">
+        <label>BIP-39 Passphrase (optional)</label>
+        <input type="password" id="create-passphrase" placeholder="Additional passphrase">
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="createWallet()">Create New Wallet</button>
+    </div>
+
+    <!-- Restore -->
+    <div id="tab-restore" class="login-tab-content" style="display:none">
+      <div class="form-group">
+        <label>Recovery Phrase</label>
+        <input type="text" id="restore-mnemonic" placeholder="Enter your 12/24 word phrase">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="restore-password" placeholder="Encryption password">
+      </div>
+      <div class="form-group">
+        <label>BIP-39 Passphrase (optional)</label>
+        <input type="password" id="restore-passphrase" placeholder="Additional passphrase">
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="restoreWallet()">Restore Wallet</button>
+    </div>
+  </div>
+</div>
+
+<!-- Mnemonic Backup Modal -->
+<div id="mnemonic-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:999; display:none; align-items:center; justify-content:center;">
+  <div class="login-box" style="width:560px">
+    <div class="card-header" style="color:var(--yellow); font-size:16px;">Backup Your Recovery Phrase</div>
+    <div class="warning-box">Write these words down and store them safely. This is the ONLY way to recover your wallet.</div>
+    <div id="mnemonic-display" class="mnemonic-grid"></div>
+    <div class="btn-group" style="justify-content:center; margin-top:20px;">
+      <button class="btn btn-primary" onclick="closeMnemonicModal()">I've Saved My Phrase</button>
+    </div>
+  </div>
+</div>
+
+<!-- Main App -->
+<div id="app-screen" class="app" style="display:none">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="logo">
+      BITWILL
+      <span>Inheritance Security</span>
+    </div>
+    <div class="nav">
+      <div class="nav-section">Wallet</div>
+      <div class="nav-item active" onclick="showPage('dashboard')"><span class="icon">&#9673;</span> Dashboard</div>
+      <div class="nav-item" onclick="showPage('children')"><span class="icon">&#9670;</span> Child Wallets</div>
+      <div class="nav-item" onclick="showPage('addresses')"><span class="icon">&#9737;</span> Addresses</div>
+      <div class="nav-divider"></div>
+      <div class="nav-section">Inheritance</div>
+      <div class="nav-item" onclick="showPage('nominees')"><span class="icon">&#9829;</span> Nominees</div>
+      <div class="nav-item" onclick="showPage('presigned')"><span class="icon">&#9998;</span> Pre-Signed TXs</div>
+      <div class="nav-divider"></div>
+      <div class="nav-section">Network</div>
+      <div class="nav-item" onclick="showPage('network')"><span class="icon">&#9889;</span> Blockchain</div>
+      <div class="nav-item" onclick="showPage('broadcast')"><span class="icon">&#9654;</span> Broadcast</div>
+      <div class="nav-item" onclick="showPage('history')"><span class="icon">&#9776;</span> TX History</div>
+    </div>
+    <div class="sidebar-footer">
+      <span id="net-indicator" class="net-badge testnet">TESTNET</span>
+      <span id="conn-status" style="margin-left:8px"><span class="status-dot offline"></span>Offline</span>
+      <div style="margin-top:8px">
+        <button class="btn btn-sm btn-secondary" onclick="lockWallet()">Lock</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main content -->
+  <div class="main">
+
+    <!-- Dashboard -->
+    <div id="page-dashboard" class="page active">
+      <div class="page-title">Dashboard</div>
+      <div class="stats">
+        <div class="stat-card">
+          <div class="stat-label">Balance</div>
+          <div class="stat-value btc" id="dash-balance">0.00000000 BTC</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Network Balance</div>
+          <div class="stat-value btc" id="dash-net-balance">--</div>
+          <button class="btn btn-sm btn-secondary" style="margin-top:8px" onclick="fetchNetBalance()">Sync</button>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Child Wallets</div>
+          <div class="stat-value" id="dash-children">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Pre-Signed TXs</div>
+          <div class="stat-value" id="dash-presigned">0</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">Primary Address</div>
+        <div class="stat-value addr" id="dash-address">--</div>
+      </div>
+      <div class="card">
+        <div class="card-header">Fee Estimates <button class="btn btn-sm btn-secondary" onclick="fetchFees()">Refresh</button></div>
+        <div id="fee-display" style="color:var(--text-dim)">Click refresh to load fee estimates</div>
+      </div>
+    </div>
+
+    <!-- Child Wallets -->
+    <div id="page-children" class="page">
+      <div class="page-title">Child Wallets</div>
+      <div class="card">
+        <div class="card-header">Create Child Wallet</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div class="form-group"><label>Name</label><input id="child-name" placeholder="e.g., Alice"></div>
+          <div class="form-group"><label>Nominee Name (optional)</label><input id="child-nominee-name" placeholder="e.g., Bob"></div>
+        </div>
+        <div class="form-group"><label>Nominee Address (optional)</label><input id="child-nominee-addr" placeholder="Bitcoin address"></div>
+        <button class="btn btn-primary" onclick="createChild()">Create</button>
+      </div>
+      <div class="card">
+        <div class="card-header">Child Wallets <span class="badge" id="children-count">0</span></div>
+        <div id="children-table">
+          <table>
+            <thead><tr><th>Name</th><th>Address</th><th>Allocated</th><th>Nominee</th><th>Path</th></tr></thead>
+            <tbody id="children-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">Distribute BTC to Child</div>
+        <div style="display:grid; grid-template-columns:2fr 1fr 1fr; gap:12px;">
+          <div class="form-group"><label>Child Name</label><input id="dist-child" placeholder="Wallet name"></div>
+          <div class="form-group"><label>Amount (BTC)</label><input id="dist-amount" placeholder="0.5"></div>
+          <div class="form-group"><label>Fee (BTC)</label><input id="dist-fee" placeholder="0.0001" value="0.0001"></div>
+        </div>
+        <button class="btn btn-primary" onclick="distributeBtc()">Distribute</button>
+      </div>
+    </div>
+
+    <!-- Addresses -->
+    <div id="page-addresses" class="page">
+      <div class="page-title">Addresses</div>
+      <div class="card">
+        <div class="card-header">Generate Address</div>
+        <button class="btn btn-primary" onclick="generateAddress()">Generate New Address</button>
+        <div id="new-addr-result" style="margin-top:12px;"></div>
+      </div>
+    </div>
+
+    <!-- Nominees -->
+    <div id="page-nominees" class="page">
+      <div class="page-title">Inheritance Nominees</div>
+      <div class="card">
+        <div class="card-header">Designate Nominee</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div class="form-group"><label>Child Wallet Name</label><input id="nom-child" placeholder="Wallet name"></div>
+          <div class="form-group"><label>Nominee Name</label><input id="nom-name" placeholder="Nominee name"></div>
+        </div>
+        <div style="display:grid; grid-template-columns:2fr 1fr; gap:12px;">
+          <div class="form-group"><label>Nominee BTC Address</label><input id="nom-addr" placeholder="Bitcoin address"></div>
+          <div class="form-group"><label>Amount (BTC)</label><input id="nom-amount" placeholder="1.0"></div>
+        </div>
+        <button class="btn btn-primary" onclick="designateNominee()">Designate</button>
+      </div>
+      <div class="card">
+        <div class="card-header">Inheritance Summary</div>
+        <div id="inheritance-summary">Loading...</div>
+      </div>
+    </div>
+
+    <!-- Pre-Signed TXs -->
+    <div id="page-presigned" class="page">
+      <div class="page-title">Pre-Signed Transactions</div>
+      <div class="card">
+        <div class="card-header">Pre-Sign Inheritance TX</div>
+        <div style="display:grid; grid-template-columns:2fr 1fr 1fr; gap:12px;">
+          <div class="form-group"><label>Child Wallet Name</label><input id="ps-child" placeholder="Wallet name"></div>
+          <div class="form-group"><label>Fee (BTC)</label><input id="ps-fee" placeholder="0.0001" value="0.0001"></div>
+          <div class="form-group"><label>Locktime</label><input id="ps-locktime" placeholder="0" value="0"></div>
+        </div>
+        <button class="btn btn-primary" onclick="preSign()">Pre-Sign</button>
+      </div>
+      <div class="card">
+        <div class="card-header">Stored Pre-Signed Transactions <button class="btn btn-sm btn-secondary" onclick="loadPresigned()">Refresh</button></div>
+        <div id="presigned-list">Loading...</div>
+      </div>
+    </div>
+
+    <!-- Network / Blockchain -->
+    <div id="page-network" class="page">
+      <div class="page-title">Blockchain Network</div>
+      <div class="stats">
+        <div class="stat-card">
+          <div class="stat-label">Status</div>
+          <div class="stat-value" id="net-status">--</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Block Height</div>
+          <div class="stat-value" id="net-height">--</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Network</div>
+          <div class="stat-value" id="net-name">--</div>
+        </div>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-primary" onclick="checkNetwork()">Check Connectivity</button>
+        <button class="btn btn-secondary" onclick="syncUtxos()">Sync UTXOs from Network</button>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="card-header">Address Lookup</div>
+        <div class="form-group"><label>Address</label><input id="lookup-addr" placeholder="Bitcoin address (leave blank for wallet address)"></div>
+        <button class="btn btn-secondary" onclick="lookupAddress()">Lookup</button>
+        <div id="lookup-result" style="margin-top:12px;"></div>
+      </div>
+    </div>
+
+    <!-- Broadcast -->
+    <div id="page-broadcast" class="page">
+      <div class="page-title">Broadcast Transaction</div>
+      <div class="card">
+        <div class="card-header">Broadcast Raw Transaction</div>
+        <div class="form-group"><label>Raw Transaction Hex</label><input id="broadcast-hex" placeholder="Signed transaction hex"></div>
+        <button class="btn btn-danger" onclick="broadcastRaw()">Broadcast to Network</button>
+        <div id="broadcast-result" style="margin-top:12px;"></div>
+      </div>
+      <div class="card">
+        <div class="card-header">Broadcast Inheritance TX</div>
+        <div class="warning-box">This will broadcast the pre-signed inheritance transaction to transfer funds to the nominee.</div>
+        <div class="form-group"><label>Child Wallet Name</label><input id="broadcast-child" placeholder="Wallet name"></div>
+        <button class="btn btn-danger" onclick="broadcastInheritance()">Broadcast Inheritance TX</button>
+        <div id="broadcast-inherit-result" style="margin-top:12px;"></div>
+      </div>
+      <div class="card">
+        <div class="card-header">Check TX Status</div>
+        <div class="form-group"><label>Transaction ID</label><input id="txstatus-id" placeholder="txid"></div>
+        <button class="btn btn-secondary" onclick="checkTxStatus()">Check</button>
+        <div id="txstatus-result" style="margin-top:12px;"></div>
+      </div>
+    </div>
+
+    <!-- TX History -->
+    <div id="page-history" class="page">
+      <div class="page-title">Transaction History</div>
+      <div class="card">
+        <div class="card-header">Network Transaction History <button class="btn btn-sm btn-secondary" onclick="loadHistory()">Refresh</button></div>
+        <div id="history-list">Click refresh to load history from the network.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container" class="toast-container"></div>
+
+<script>
+/* --- API helpers --- */
+async function api(path, opts = {}) {
+  const res = await fetch(path, {
+    headers: { 'Content-Type': 'application/json' },
+    ...opts,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  return data;
+}
+
+function toast(msg, type = 'info') {
+  const c = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  c.appendChild(el);
+  setTimeout(() => el.remove(), 5000);
+}
+
+/* --- Login --- */
+function switchLoginTab(tab) {
+  document.querySelectorAll('.login-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.login-tab-content').forEach(t => t.style.display = 'none');
+  event.target.classList.add('active');
+  document.getElementById(`tab-${tab}`).style.display = 'block';
+}
+
+async function unlockWallet() {
+  const pw = document.getElementById('unlock-password').value;
+  try {
+    const d = await api('/api/unlock', { method: 'POST', body: JSON.stringify({ password: pw }) });
+    if (d.panic_events > 0) toast(`Warning: ${d.panic_events} unauthorized access attempt(s) detected!`, 'error');
+    enterApp(d);
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+async function createWallet() {
+  const pw = document.getElementById('create-password').value;
+  const cf = document.getElementById('create-confirm').value;
+  const pp = document.getElementById('create-passphrase').value;
+  if (pw !== cf) return toast('Passwords do not match', 'error');
+  if (pw.length < 8) return toast('Password must be at least 8 characters', 'error');
+  try {
+    const d = await api('/api/create', { method: 'POST', body: JSON.stringify({ password: pw, passphrase: pp }) });
+    showMnemonic(d.mnemonic);
+    enterApp(d);
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+async function restoreWallet() {
+  const mn = document.getElementById('restore-mnemonic').value;
+  const pw = document.getElementById('restore-password').value;
+  const pp = document.getElementById('restore-passphrase').value;
+  try {
+    const d = await api('/api/restore', { method: 'POST', body: JSON.stringify({ mnemonic: mn, password: pw, passphrase: pp }) });
+    toast('Wallet restored!', 'success');
+    enterApp(d);
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+function showMnemonic(mnemonic) {
+  const words = mnemonic.split(' ');
+  const grid = document.getElementById('mnemonic-display');
+  grid.innerHTML = words.map((w, i) => `<div class="mnemonic-word"><span class="num">${i+1}.</span>${w}</div>`).join('');
+  document.getElementById('mnemonic-modal').style.display = 'flex';
+}
+
+function closeMnemonicModal() {
+  document.getElementById('mnemonic-modal').style.display = 'none';
+}
+
+async function lockWallet() {
+  await api('/api/lock', { method: 'POST' });
+  document.getElementById('app-screen').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  toast('Wallet locked', 'info');
+}
+
+function enterApp(data) {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-screen').style.display = 'flex';
+  if (data.address) document.getElementById('dash-address').textContent = data.address;
+  if (data.balance_btc !== undefined) document.getElementById('dash-balance').textContent = data.balance_btc.toFixed(8) + ' BTC';
+  refreshDashboard();
+}
+
+/* --- Dashboard --- */
+async function refreshDashboard() {
+  try {
+    const info = await api('/api/wallet');
+    document.getElementById('dash-balance').textContent = (info.balance_btc || 0).toFixed(8) + ' BTC';
+    document.getElementById('dash-address').textContent = info.master_address || info.primary_address || '--';
+    document.getElementById('dash-children').textContent = (info.child_wallets || []).length;
+    document.getElementById('dash-presigned').textContent = info.pre_signed_tx_count || 0;
+  } catch (e) {}
+  checkNetwork();
+}
+
+async function fetchNetBalance() {
+  try {
+    const d = await api('/api/network/balance');
+    document.getElementById('dash-net-balance').textContent = (d.balance_btc || 0).toFixed(8) + ' BTC';
+    toast('Network balance synced', 'success');
+  } catch (e) { document.getElementById('dash-net-balance').textContent = 'Error'; toast(e.message, 'error'); }
+}
+
+async function fetchFees() {
+  try {
+    const d = await api('/api/network/fees');
+    document.getElementById('fee-display').innerHTML = `
+      <table><thead><tr><th>Priority</th><th>Rate (sat/vB)</th></tr></thead><tbody>
+      <tr><td>Fastest (1 block)</td><td>${d.fastest}</td></tr>
+      <tr><td>Half hour (~3 blocks)</td><td>${d.half_hour}</td></tr>
+      <tr><td>Hour (~6 blocks)</td><td>${d.hour}</td></tr>
+      <tr><td>Economy</td><td>${d.economy}</td></tr>
+      </tbody></table>`;
+  } catch (e) { document.getElementById('fee-display').textContent = 'Failed: ' + e.message; }
+}
+
+/* --- Child Wallets --- */
+async function loadChildren() {
+  try {
+    const children = await api('/api/children');
+    document.getElementById('children-count').textContent = children.length;
+    const tbody = document.getElementById('children-tbody');
+    tbody.innerHTML = children.map(c => `<tr>
+      <td><strong>${esc(c.name)}</strong></td>
+      <td class="tx-hash">${esc(c.address)}</td>
+      <td class="amount-in">${(c.allocated_btc || 0).toFixed(8)}</td>
+      <td>${c.nominee ? esc(c.nominee) : '<span style="color:var(--text-dim)">--</span>'}</td>
+      <td style="color:var(--text-dim);font-size:11px">${esc(c.derivation_path)}</td>
+    </tr>`).join('');
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+async function createChild() {
+  const name = document.getElementById('child-name').value;
+  const nn = document.getElementById('child-nominee-name').value;
+  const na = document.getElementById('child-nominee-addr').value;
+  if (!name) return toast('Name required', 'error');
+  try {
+    await api('/api/children', { method: 'POST', body: JSON.stringify({ name, nominee_name: nn || undefined, nominee_address: na || undefined }) });
+    toast(`Child wallet "${name}" created`, 'success');
+    document.getElementById('child-name').value = '';
+    loadChildren();
+    refreshDashboard();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+async function distributeBtc() {
+  const child = document.getElementById('dist-child').value;
+  const amount = document.getElementById('dist-amount').value;
+  const fee = document.getElementById('dist-fee').value || '0.0001';
+  try {
+    const d = await api('/api/distribute', { method: 'POST', body: JSON.stringify({ child_name: child, amount_btc: amount, fee_btc: fee }) });
+    toast(`Distributed ${d.amount_btc} BTC to ${child}. TXID: ${d.txid.slice(0,16)}...`, 'success');
+    loadChildren();
+    refreshDashboard();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+/* --- Addresses --- */
+async function generateAddress() {
+  try {
+    const d = await api('/api/address/new', { method: 'POST' });
+    document.getElementById('new-addr-result').innerHTML = `<div class="stat-value addr">${esc(d.address)}</div>`;
+    toast('New address generated', 'success');
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+/* --- Nominees --- */
+async function designateNominee() {
+  try {
+    const d = await api('/api/nominee', { method: 'POST', body: JSON.stringify({
+      child_wallet_name: document.getElementById('nom-child').value,
+      nominee_name: document.getElementById('nom-name').value,
+      nominee_address: document.getElementById('nom-addr').value,
+      amount_btc: document.getElementById('nom-amount').value,
+    }) });
+    toast(`Nominee designated: ${d.nominee_name}`, 'success');
+    loadInheritance();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+async function loadInheritance() {
+  try {
+    const d = await api('/api/inheritance');
+    let html = `<p>Total Nominees: <strong>${d.total_nominees}</strong> | Pre-Signed: <strong>${d.total_pre_signed}</strong> | Allocated: <strong class="amount-in">${(d.total_allocated_btc || 0).toFixed(8)} BTC</strong></p>`;
+    if (d.nominees && d.nominees.length) {
+      html += '<table><thead><tr><th>Nominee</th><th>Child Wallet</th><th>Amount</th><th>Status</th></tr></thead><tbody>';
+      d.nominees.forEach(n => {
+        html += `<tr><td>${esc(n.nominee_name)}</td><td>${esc(n.child_wallet)}</td><td class="amount-in">${n.amount_btc.toFixed(8)}</td><td>${esc(n.status)}</td></tr>`;
+      });
+      html += '</tbody></table>';
+    }
+    document.getElementById('inheritance-summary').innerHTML = html;
+  } catch (e) { document.getElementById('inheritance-summary').textContent = 'Error: ' + e.message; }
+}
+
+/* --- Pre-Signed --- */
+async function preSign() {
+  try {
+    const d = await api('/api/presign', { method: 'POST', body: JSON.stringify({
+      child_wallet_name: document.getElementById('ps-child').value,
+      fee_btc: document.getElementById('ps-fee').value || '0.0001',
+      locktime: document.getElementById('ps-locktime').value || '0',
+    }) });
+    toast(`Pre-signed TX created: ${d.txid.slice(0,16)}...`, 'success');
+    loadPresigned();
+    refreshDashboard();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+async function loadPresigned() {
+  try {
+    const txs = await api('/api/presigned-txs');
+    if (!txs.length) { document.getElementById('presigned-list').innerHTML = '<p style="color:var(--text-dim)">No pre-signed transactions</p>'; return; }
+    let html = '<table><thead><tr><th>TXID</th><th>From</th><th>Nominee</th><th>Amount</th><th>Status</th></tr></thead><tbody>';
+    txs.forEach(t => {
+      const amt = t.amount_satoshis ? (t.amount_satoshis / 1e8).toFixed(8) : '--';
+      html += `<tr>
+        <td class="tx-hash">${t.txid ? t.txid.slice(0,20) + '...' : '--'}</td>
+        <td>${esc(t.source_wallet || '')}</td>
+        <td>${esc(t.nominee_name || '')}</td>
+        <td class="amount-in">${amt}</td>
+        <td>${esc(t.status || '')}</td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+    document.getElementById('presigned-list').innerHTML = html;
+  } catch (e) { document.getElementById('presigned-list').textContent = 'Error: ' + e.message; }
+}
+
+/* --- Network --- */
+async function checkNetwork() {
+  try {
+    const d = await api('/api/network/status');
+    const el = document.getElementById('conn-status');
+    const dot = d.connected ? '<span class="status-dot online"></span>Online' : '<span class="status-dot offline"></span>Offline';
+    el.innerHTML = dot;
+    document.getElementById('net-status').innerHTML = d.connected ? '<span style="color:var(--green)">Connected</span>' : '<span style="color:var(--red)">Offline</span>';
+    document.getElementById('net-height').textContent = d.block_height || '--';
+    document.getElementById('net-name').textContent = d.network || '--';
+  } catch (e) {}
+}
+
+async function syncUtxos() {
+  try {
+    const d = await api('/api/network/utxos', { method: 'POST' });
+    toast(`Synced ${d.count} UTXOs from network`, 'success');
+    refreshDashboard();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+async function lookupAddress() {
+  const addr = document.getElementById('lookup-addr').value;
+  try {
+    const d = await api(`/api/network/balance${addr ? '?address=' + encodeURIComponent(addr) : ''}`);
+    document.getElementById('lookup-result').innerHTML = `
+      <table>
+        <tr><td style="color:var(--text-dim)">Address</td><td class="tx-hash">${esc(d.address)}</td></tr>
+        <tr><td style="color:var(--text-dim)">Balance</td><td class="amount-in">${(d.balance_btc || 0).toFixed(8)} BTC</td></tr>
+        <tr><td style="color:var(--text-dim)">Total Received</td><td>${(d.total_received_sat / 1e8).toFixed(8)} BTC</td></tr>
+        <tr><td style="color:var(--text-dim)">Total Sent</td><td>${(d.total_sent_sat / 1e8).toFixed(8)} BTC</td></tr>
+        <tr><td style="color:var(--text-dim)">TX Count</td><td>${d.tx_count}</td></tr>
+        <tr><td style="color:var(--text-dim)">Unconfirmed</td><td>${(d.unconfirmed_balance_sat / 1e8).toFixed(8)} BTC</td></tr>
+      </table>`;
+  } catch (e) { document.getElementById('lookup-result').innerHTML = `<span style="color:var(--red)">${esc(e.message)}</span>`; }
+}
+
+/* --- Broadcast --- */
+async function broadcastRaw() {
+  const hex = document.getElementById('broadcast-hex').value;
+  try {
+    const d = await api('/api/network/broadcast', { method: 'POST', body: JSON.stringify({ raw_hex: hex }) });
+    document.getElementById('broadcast-result').innerHTML = `<span style="color:var(--green)">Broadcast success! TXID: <span class="tx-hash">${esc(d.txid)}</span></span>`;
+    toast('Transaction broadcast!', 'success');
+  } catch (e) { document.getElementById('broadcast-result').innerHTML = `<span style="color:var(--red)">${esc(e.message)}</span>`; }
+}
+
+async function broadcastInheritance() {
+  const child = document.getElementById('broadcast-child').value;
+  if (!child) return toast('Child wallet name required', 'error');
+  try {
+    const d = await api('/api/network/broadcast-inheritance', { method: 'POST', body: JSON.stringify({ child_wallet_name: child }) });
+    document.getElementById('broadcast-inherit-result').innerHTML = `<span style="color:var(--green)">Broadcast! TXID: ${esc(d.txid)} | Nominee: ${esc(d.nominee)} | ${d.amount_btc.toFixed(8)} BTC</span>`;
+    toast('Inheritance TX broadcast!', 'success');
+  } catch (e) { document.getElementById('broadcast-inherit-result').innerHTML = `<span style="color:var(--red)">${esc(e.message)}</span>`; }
+}
+
+async function checkTxStatus() {
+  const txid = document.getElementById('txstatus-id').value;
+  try {
+    const d = await api(`/api/network/tx-status/${encodeURIComponent(txid)}`);
+    document.getElementById('txstatus-result').innerHTML = `
+      <table>
+        <tr><td style="color:var(--text-dim)">Confirmed</td><td>${d.confirmed ? '<span style="color:var(--green)">Yes</span>' : '<span style="color:var(--yellow)">No</span>'}</td></tr>
+        ${d.block_height ? `<tr><td style="color:var(--text-dim)">Block Height</td><td>${d.block_height}</td></tr>` : ''}
+        ${d.block_hash ? `<tr><td style="color:var(--text-dim)">Block Hash</td><td class="tx-hash">${d.block_hash}</td></tr>` : ''}
+      </table>`;
+  } catch (e) { document.getElementById('txstatus-result').innerHTML = `<span style="color:var(--red)">${esc(e.message)}</span>`; }
+}
+
+/* --- History --- */
+async function loadHistory() {
+  try {
+    const txs = await api('/api/network/history');
+    if (!txs.length) { document.getElementById('history-list').innerHTML = '<p style="color:var(--text-dim)">No transactions found</p>'; return; }
+    let html = '<table><thead><tr><th>TXID</th><th>Status</th><th>Inputs</th><th>Outputs</th></tr></thead><tbody>';
+    txs.slice(0, 25).forEach(t => {
+      const confirmed = t.status && t.status.confirmed;
+      html += `<tr>
+        <td class="tx-hash">${t.txid ? t.txid.slice(0,24) + '...' : '--'}</td>
+        <td>${confirmed ? '<span style="color:var(--green)">Confirmed</span>' : '<span style="color:var(--yellow)">Pending</span>'}</td>
+        <td>${(t.vin || []).length}</td>
+        <td>${(t.vout || []).length}</td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+    document.getElementById('history-list').innerHTML = html;
+  } catch (e) { document.getElementById('history-list').innerHTML = `<span style="color:var(--red)">${esc(e.message)}</span>`; }
+}
+
+/* --- Navigation --- */
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById(`page-${page}`).classList.add('active');
+  event.currentTarget.classList.add('active');
+  // Load data for each page
+  if (page === 'children') loadChildren();
+  if (page === 'nominees') loadInheritance();
+  if (page === 'presigned') loadPresigned();
+  if (page === 'network') checkNetwork();
+  if (page === 'history') loadHistory();
+  if (page === 'dashboard') refreshDashboard();
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+/* --- Init --- */
+(async function init() {
+  try {
+    const s = await api('/api/status');
+    const badge = document.getElementById('net-indicator');
+    badge.textContent = s.network.toUpperCase();
+    badge.className = `net-badge ${s.network}`;
+    if (s.unlocked) { enterApp({}); refreshDashboard(); }
+    else if (!s.wallet_exists) switchLoginTab('create');
+  } catch (e) {}
+})();
+</script>
+</body>
+</html>

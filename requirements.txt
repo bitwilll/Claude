@@ -1,0 +1,11 @@
+bitcoinlib>=0.6.0
+ecdsa>=0.18.0
+mnemonic>=0.20
+hashlib-additional>=1.0; python_version<"3.0"
+pycryptodome>=3.19.0
+base58>=2.1.1
+bech32>=1.2.0
+click>=8.1.0
+rich>=13.0.0
+qrcode>=7.4.0
+flask>=3.0.0

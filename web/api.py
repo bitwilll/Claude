@@ -59,10 +59,14 @@ def create_app(storage_dir: Optional[str] = None,
         sdir = storage_dir or os.path.expanduser("~/.bitwill")
         tmp = BitWillApp(storage_dir=sdir, testnet=testnet)
         bw = _get_app_instance()
+        current_network = "testnet" if testnet else "mainnet"
+        if bw and bw.is_initialized:
+            current_network = "testnet" if bw.testnet else "mainnet"
         return jsonify({
             "wallet_exists": tmp.wallet_exists(),
             "unlocked": bw is not None and bw.is_initialized,
-            "network": "testnet" if testnet else "mainnet",
+            "network": current_network,
+            "mainnet_available": True,
         })
 
     @app.route("/api/create", methods=["POST"])
@@ -250,6 +254,40 @@ def create_app(storage_dir: Optional[str] = None,
     @require_wallet
     def network_status(bw: BitWillApp):
         return jsonify(bw.check_network())
+
+    @app.route("/api/network/ping", methods=["GET"])
+    def ping_network():
+        """Ping blockchain endpoints (works without wallet unlock)."""
+        from ..network.blockchain import BlockchainAPI
+        network = request.args.get("network", "testnet")
+        is_testnet = network != "mainnet"
+        api = BlockchainAPI(testnet=is_testnet)
+        return jsonify(api.ping())
+
+    @app.route("/api/network/ping-all", methods=["GET"])
+    def ping_all_networks():
+        """Ping both testnet and mainnet endpoints."""
+        from ..network.blockchain import BlockchainAPI
+        results = {}
+        for label, is_testnet in [("testnet", True), ("mainnet", False)]:
+            api = BlockchainAPI(testnet=is_testnet)
+            results[label] = api.ping()
+        return jsonify(results)
+
+    @app.route("/api/network/switch", methods=["POST"])
+    @require_wallet
+    def switch_network(bw: BitWillApp):
+        """Switch between testnet and mainnet."""
+        data = request.get_json(force=True)
+        network = data.get("network", "")
+        if network not in ("testnet", "mainnet"):
+            return jsonify({"error": "network must be 'testnet' or 'mainnet'"}), 400
+        is_testnet = network == "testnet"
+        bw.switch_network(testnet=is_testnet)
+        return jsonify({
+            "network": network,
+            "switched": True,
+        })
 
     @app.route("/api/network/balance", methods=["GET"])
     @require_wallet

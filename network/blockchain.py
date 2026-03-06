@@ -261,6 +261,44 @@ class BlockchainAPI:
         estimated_size = 10 + (num_inputs * 148) + (num_outputs * 34)
         return rate * estimated_size
 
+    def ping(self) -> Dict:
+        """
+        Ping blockchain API endpoints and return detailed connectivity info.
+        Returns latency, block height, and endpoint status for each backend.
+        """
+        results = {
+            'network': 'testnet' if self.testnet else 'mainnet',
+            'endpoints': [],
+            'connected': False,
+            'block_height': None,
+        }
+
+        for label, base_url in [("primary", self._primary),
+                                 ("fallback", self._fallback)]:
+            endpoint_result = {
+                'label': label,
+                'url': base_url,
+                'reachable': False,
+                'latency_ms': None,
+                'block_height': None,
+            }
+            try:
+                start = time.time()
+                raw = self._request(f"{base_url}/blocks/tip/height")
+                latency = (time.time() - start) * 1000
+                height = int(raw.decode("utf-8").strip())
+                endpoint_result['reachable'] = True
+                endpoint_result['latency_ms'] = round(latency, 1)
+                endpoint_result['block_height'] = height
+                results['connected'] = True
+                if results['block_height'] is None:
+                    results['block_height'] = height
+            except (urllib.error.URLError, OSError, ValueError):
+                pass
+            results['endpoints'].append(endpoint_result)
+
+        return results
+
     def check_connectivity(self) -> bool:
         """Check if we can reach the blockchain API."""
         try:

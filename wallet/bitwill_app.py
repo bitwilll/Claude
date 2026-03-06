@@ -436,6 +436,15 @@ class BitWillApp:
                 pass
         return result
 
+    def ping_network(self) -> Dict:
+        """Ping blockchain endpoints with latency info."""
+        return self.blockchain.ping()
+
+    def switch_network(self, testnet: bool) -> None:
+        """Switch between testnet and mainnet."""
+        self.testnet = testnet
+        self.blockchain = BlockchainAPI(testnet=testnet)
+
     # --- Panic Mode ---
 
     def get_panic_log(self) -> List[Dict]:

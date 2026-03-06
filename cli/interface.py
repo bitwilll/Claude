@@ -53,6 +53,7 @@ class BitWillCLI:
 
     def start(self) -> None:
         print(BANNER)
+        self._network_selection()
         if self.app.wallet_exists():
             self._unlock_flow()
         else:
@@ -60,6 +61,50 @@ class BitWillCLI:
 
         if self.app.is_initialized:
             self._main_menu()
+
+    def _network_selection(self) -> None:
+        """Let the user choose between testnet and mainnet at startup."""
+        print(c("  === Network Selection ===\n", Colors.BOLD))
+        print(f"  1. {c('Testnet', Colors.GREEN)}  (default - safe for testing)")
+        print(f"  2. {c('Mainnet', Colors.RED)}  (real Bitcoin - use with caution)")
+        print(f"  3. {c('Ping Servers', Colors.CYAN)}  (test connectivity before choosing)\n")
+
+        choice = input(c("  Select network [1]: ", Colors.CYAN)).strip()
+
+        if choice == '3':
+            self._ping_both_networks()
+            # Ask again after ping
+            print()
+            print(f"  1. {c('Testnet', Colors.GREEN)}")
+            print(f"  2. {c('Mainnet', Colors.RED)}\n")
+            choice = input(c("  Select network [1]: ", Colors.CYAN)).strip()
+
+        if choice == '2':
+            self.app.switch_network(testnet=False)
+            print(c("\n  Network set to MAINNET (real Bitcoin)", Colors.RED))
+            print(c("  WARNING: Transactions on mainnet use real BTC!\n", Colors.YELLOW))
+        else:
+            self.app.switch_network(testnet=True)
+            print(c("\n  Network set to TESTNET\n", Colors.GREEN))
+
+    def _ping_both_networks(self) -> None:
+        """Ping both testnet and mainnet endpoints."""
+        from ..network.blockchain import BlockchainAPI
+        print(c("\n  Pinging blockchain servers...\n", Colors.YELLOW))
+
+        for net_label, is_testnet in [("TESTNET", True), ("MAINNET", False)]:
+            api = BlockchainAPI(testnet=is_testnet)
+            result = api.ping()
+            net_color = Colors.GREEN if net_label == "TESTNET" else Colors.RED
+            print(f"  {c(f'--- {net_label} ---', net_color)}")
+            for ep in result['endpoints']:
+                if ep['reachable']:
+                    print(f"    {c('OK', Colors.GREEN)}  {ep['url']}")
+                    print(f"         Latency: {c(f\"{ep['latency_ms']}ms\", Colors.CYAN)}  "
+                          f"Block: {c(str(ep['block_height']), Colors.CYAN)}")
+                else:
+                    print(f"    {c('FAIL', Colors.RED)}  {ep['url']}")
+            print()
 
     def _welcome_flow(self) -> None:
         print(c("\n  Welcome to BITWILL!", Colors.BOLD))
@@ -173,6 +218,8 @@ class BitWillCLI:
             print("  9.  Add UTXO (Testing)")
             print("  10. View Pre-Signed Transactions")
             print("  11. Transaction History")
+            print("  12. Ping Network")
+            print("  13. Switch Network (Testnet/Mainnet)")
             print("  0.  Exit\n")
 
             choice = input(c("  Select option: ", Colors.CYAN)).strip()
@@ -189,6 +236,8 @@ class BitWillCLI:
                 '9': self._add_utxo,
                 '10': self._show_pre_signed_txs,
                 '11': self._show_tx_history,
+                '12': self._ping_network,
+                '13': self._switch_network,
                 '0': self._exit,
             }
 
@@ -414,6 +463,43 @@ class BitWillCLI:
                   f"  {c(ts, Colors.DIM)}  "
                   f"({c(str(confs), Colors.CYAN)} confirmations)")
             print(f"      {c(tx.get('txid', '')[:48] + '...', Colors.DIM)}")
+
+    def _ping_network(self) -> None:
+        """Ping current network endpoints and show results."""
+        print(c("\n  === Ping Network ===\n", Colors.BOLD))
+        result = self.app.ping_network()
+        net_label = result['network'].upper()
+        net_color = Colors.GREEN if result['network'] == 'testnet' else Colors.RED
+        print(f"  Network: {c(net_label, net_color)}")
+        print(f"  Connected: {c('Yes', Colors.GREEN) if result['connected'] else c('No', Colors.RED)}")
+        if result['block_height']:
+            print(f"  Block Height: {c(str(result['block_height']), Colors.CYAN)}")
+        print()
+        for ep in result['endpoints']:
+            if ep['reachable']:
+                print(f"    {c('OK', Colors.GREEN)}  {ep['url']}")
+                print(f"         Latency: {c(f\"{ep['latency_ms']}ms\", Colors.CYAN)}  "
+                      f"Block: {c(str(ep['block_height']), Colors.CYAN)}")
+            else:
+                print(f"    {c('FAIL', Colors.RED)}  {ep['url']}")
+
+    def _switch_network(self) -> None:
+        """Switch between testnet and mainnet."""
+        current = 'testnet' if self.app.testnet else 'mainnet'
+        target = 'mainnet' if self.app.testnet else 'testnet'
+        print(c(f"\n  Current network: {current.upper()}", Colors.BOLD))
+        print(f"  Switch to {c(target.upper(), Colors.YELLOW)}?")
+
+        if target == 'mainnet':
+            print(c("\n  WARNING: Mainnet uses real Bitcoin!", Colors.RED))
+            print(c("  Only switch if you know what you are doing.", Colors.RED))
+
+        confirm = input(c(f"\n  Type 'yes' to switch to {target}: ", Colors.CYAN)).strip().lower()
+        if confirm == 'yes':
+            self.app.switch_network(testnet=(target == 'testnet'))
+            print(c(f"\n  Switched to {target.upper()}", Colors.GREEN))
+        else:
+            print(c("  Cancelled.", Colors.DIM))
 
     def _exit(self) -> None:
         print(c("\n  Goodbye! Your wallet data is safely encrypted.\n",
